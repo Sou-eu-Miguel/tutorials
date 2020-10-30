@@ -5,6 +5,7 @@ import org.junit.Before;
 import org.junit.After;
 import org.junit.runner.RunWith;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit4.SpringRunner;
 import com.github.tomakehurst.wiremock.WireMockServer;
 
@@ -19,15 +20,19 @@ import static org.junit.Assert.assertEquals;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest
+@DirtiesContext
 public class ClientIntegrationTest {
 
     private WireMockServer wireMockServer;
 
+    private Client client;
+    
     @Before
     public void setup() {
-        wireMockServer = new WireMockServer(wireMockConfig().port(8089));
+        wireMockServer = new WireMockServer(wireMockConfig().dynamicPort());
         wireMockServer.start();
         configureFor("localhost", wireMockServer.port());
+        client = new Client("http://localhost:" + wireMockServer.port());
     }
 
     @After
@@ -52,11 +57,11 @@ public class ClientIntegrationTest {
             .boxed()
             .collect(Collectors.toList());
 
-        Client client = new Client("http://localhost:8089");
-
         // Act
         long start = System.currentTimeMillis();
-        List<User> users = client.fetchUsers(userIds);
+        List<User> users = client.fetchUsers(userIds)
+          .collectList()
+          .block();
         long end = System.currentTimeMillis();
 
         // Assert
